@@ -3,17 +3,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
-namespace YoWebApi.Controllers
+namespace VesselService
 {
     [Route("api/[controller]")]
-    public class ValuesController : Controller
+    public class VesselController : Controller
     {
+		
+        private readonly Database _context;
+        private readonly ResultSettings _resultSettings;
+		
+		public VesselController(Database context, IOptions<ResultSettings> optionsAccessor)//
+        {
+            _resultSettings = optionsAccessor.Value;
+            _context = context;
+        }
+
+		
         // GET api/values
         [HttpGet]
-        public IEnumerable<string> Get()
+        public IEnumerable<object> Get()
         {
-            return new string[] { "value1", "value2" };
+			Console.WriteLine("Limit="+_resultSettings.Limit);
+            return _context.VesselInfo.Skip(0).Take(10).ToArray();//return new string[] { "value1", "value2" };
         }
 
         // GET api/values/5

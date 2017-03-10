@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 
-namespace YoWebApi
+namespace VesselService
 {
     public class Program
     {
@@ -25,7 +25,6 @@ namespace YoWebApi
                 .UseConfiguration(config)
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
-                .UseIISIntegration()
                 .UseStartup<Startup>()
 				.UseUrls(url)
                 .Build();
