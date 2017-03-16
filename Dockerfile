@@ -16,12 +16,12 @@ ENV LANG=C.UTF-8 \
 LABEL io.k8s.description="Platform for building and running .NET Core 1.1 applications" \
       io.k8s.display-name=".NET Core 1.1" \
       io.openshift.s2i.scripts-url=image:///usr/libexec/s2i \
-      io.openshift.tags="builder,.net,dotnet,dotnetcore,rh-dotnetcore11" \
+      io.openshift.tags="builder,.net,dotnet,dotnetcore,rh-dotnetcore11,marinetnc-test/dotnetcore-11-rhel7" \
       io.openshift.expose-services="8080:http" \
       io.s2i.scripts-url=image:///usr/libexec/s2i
 
 # Labels consumed by Red Hat build service
-LABEL name="marinetnc-test/dotnetcore-11-rhel7" \
+LABEL name="dotnet/dotnetcore-11-rhel7" \
       com.redhat.component="rh-dotnetcore11-docker" \
       version="1.1" \
       release="2" \
