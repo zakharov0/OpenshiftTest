@@ -21,7 +21,7 @@ LABEL io.k8s.description="Platform for building and running .NET Core 1.1 applic
       io.s2i.scripts-url=image:///usr/libexec/s2i
 
 # Labels consumed by Red Hat build service
-LABEL name="dotnet/dotnetcore-11-rhel7" \
+LABEL name="marinetnc-test/dotnetcore-11-rhel7" \
       com.redhat.component="rh-dotnetcore11-docker" \
       version="1.1" \
       release="2" \
