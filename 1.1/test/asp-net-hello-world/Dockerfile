@@ -26,8 +26,9 @@ LABEL name="dotnet/dotnetcore-11-rhel7" \
       version="1.1" \
       release="2" \
       architecture="x86_64"
-
-COPY ./root/usr/bin /usr/bin
+      
+RUN ls
+#COPY ./root/usr/bin /usr/bin
 
 # Copy the S2I scripts from the specific language image to $STI_SCRIPTS_PATH.
 COPY ./s2i/bin/ /usr/libexec/s2i
