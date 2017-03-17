@@ -44,11 +44,7 @@ RUN yum install -y yum-utils && \
     yum-config-manager --enable rhel-7-server-rpms && \
     yum-config-manager --enable rhel-7-server-ose-3.2-rpms && \
     yum install -y --setopt=tsflags=nodocs rh-dotnetcore11 nss_wrapper tar rh-nodejs4-npm && \
-    yum clean all && \
-    mkdir -p /opt/app-root/src /opt/app-root/publish && \
-    useradd -u 1001 -r -g 0 -d /opt/app-root/src -s /sbin/nologin \
-      -c "Default Application User" default && \
-    chown -R 1001:0 /opt/app-root
+    yum clean all 
 
 # Switch to default app-user for cache population
 #USER 1001
