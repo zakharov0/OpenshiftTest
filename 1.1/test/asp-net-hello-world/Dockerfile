@@ -38,6 +38,43 @@ COPY ./contrib/ /opt/app-root
 
 USER 0
 
+
+RUN mkdir -p /opt/app-root/src /opt/app-root/publish 
+
+# Don't download/extract docs for nuget packages
+ENV NUGET_XMLDOC_MODE=skip
+
+# - Initialize the .Net cache via 'scl enable rh-dotnetcore11 -- dotnet new'
+#   Move to the proper command to do this once https://github.com/dotnet/cli/issues/3692 is fixed.
+# - Removal of /tmp/NuGetScratch is needed due to:
+#   https://github.com/NuGet/Home/issues/2793
+RUN cd /opt/app-root/src && mkdir cache-warmup && \
+    cd cache-warmup && \
+    scl enable rh-dotnetcore11 -- dotnet new && \
+    cd .. && \
+    rm -rf cache-warmup && \
+    rm -rf /tmp/NuGetScratch
+
+# Switch back to root for changing dir ownership/permissions
+USER 0
+
+# In order to drop the root user, we have to make some directories world
+# writable as OpenShift default security model is to run the container under
+# random UID.
+#RUN chown -R 1001:0 /opt/app-root && chmod -R og+rwx /opt/app-root
+
+# Get prefix path and path to scripts rather than hard-code them in scripts
+ENV CONTAINER_SCRIPTS_PATH=/opt/app-root \
+    ENABLED_COLLECTIONS="rh-dotnetcore11 rh-nodejs4"
+
+# When bash is started non-interactively, to run a shell script, for example it
+# looks for this variable and source the content of this file. This will enable
+# the SCL for all scripts without need to do 'scl enable'.
+ENV BASH_ENV=${CONTAINER_SCRIPTS_PATH}/etc/scl_enable \
+    ENV=${CONTAINER_SCRIPTS_PATH}/etc/scl_enable \
+    PROMPT_COMMAND=". ${CONTAINER_SCRIPTS_PATH}/etc/scl_enable"
+
+
 # Directory with the sources is set as the working directory. This should
 # be a folder outside $HOME as this might cause issues when compiling sources.
 # See https://github.com/redhat-developer/s2i-dotnetcore/issues/28
