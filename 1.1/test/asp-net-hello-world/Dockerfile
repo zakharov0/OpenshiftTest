@@ -71,7 +71,7 @@ RUN cd /opt/app-root/src && mkdir cache-warmup && \
 # In order to drop the root user, we have to make some directories world
 # writable as OpenShift default security model is to run the container under
 # random UID.
-RUN chown -R 1001:0 /opt/app-root && chmod -R og+rwx /opt/app-root
+#RUN chown -R 1001:0 /opt/app-root && chmod -R og+rwx /opt/app-root
 
 # Get prefix path and path to scripts rather than hard-code them in scripts
 ENV CONTAINER_SCRIPTS_PATH=/opt/app-root \
