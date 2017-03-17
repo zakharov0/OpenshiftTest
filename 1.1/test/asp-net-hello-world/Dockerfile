@@ -49,7 +49,7 @@ RUN yum install -y yum-utils && \
     chown -R 1001:0 /opt/app-root
 
 # Switch to default app-user for cache population
-USER 1001
+#USER 1001
 
 # Don't download/extract docs for nuget packages
 ENV NUGET_XMLDOC_MODE=skip
@@ -66,7 +66,7 @@ RUN cd /opt/app-root/src && mkdir cache-warmup && \
     rm -rf /tmp/NuGetScratch
 
 # Switch back to root for changing dir ownership/permissions
-USER 0
+#USER 0
 
 # In order to drop the root user, we have to make some directories world
 # writable as OpenShift default security model is to run the container under
