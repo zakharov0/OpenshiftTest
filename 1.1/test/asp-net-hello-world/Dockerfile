@@ -39,12 +39,12 @@ COPY ./contrib/ /opt/app-root
 USER 0
 
 RUN yum install -y yum-utils && \
+    subscription-manager register && \
     subscription-manager repos --enable rhel-server-rhscl-7-rpms && \
     subscription-manager repos --enable rhel-7-server-dotnet-rpms && \
     subscription-manager repos --enable rhel-7-server-rpms && \
     subscription-manager repos --enable rhel-7-server-ose-3.2-rpms && \
-    yum install -y --setopt=tsflags=nodocs rh-dotnetcore11 nss_wrapper tar rh-nodejs4-npm && \
-    yum clean all 
+    yum install rh-dotnetcore11 
 
 # Switch to default app-user for cache population
 #USER 1001
