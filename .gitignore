@@ -1,0 +1,5 @@
+/EFNCLoader/bin
+/EFNCLoader/obj
+/EFNCLoader/*.log
+/EFNCLoader/Migrations
+/EFNCLoader/project.lock.json
