@@ -3,3 +3,4 @@
 /EFNCLoader/*.log
 /EFNCLoader/Migrations
 /EFNCLoader/project.lock.json
+/NetCoreBuilded/VesselService
