@@ -16,7 +16,6 @@ namespace VesselService
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            //modelBuilder.HasPostgresExtension("uuid-ossp");
             modelBuilder.Entity<VesselInfo>()
                 .HasKey(p => p.guid);
         }
@@ -25,7 +24,7 @@ namespace VesselService
     [XmlType("Vessel")]
     public class VesselInfo
     {
-        public string guid{get;set;}
+        public Guid guid{get;set;}
         public int? mmsi{get;set;}
         public int? imo{get;set;}
         public string vessel_name{get;set;}
@@ -42,7 +41,7 @@ namespace VesselService
         }
         public VesselInfo(System.Data.IDataReader r)
         {
-            guid = (r["guid"].ToString());
+            guid = (Guid)r["guid"];
             mmsi = (int?)r["mmsi"];
             imo = (int?)r["imo"];
             vessel_name = (string)r["vessel_name"];
