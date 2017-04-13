@@ -1,53 +1,153 @@
 using Microsoft.EntityFrameworkCore;
 using System;
-//using System.Reflection;
-//using System.Linq;
 using System.Xml.Serialization;
+using System.ComponentModel.DataAnnotations;
 
-namespace VesselService
+namespace MicroService
 {
+
+    ///<summary>
+    ///
+    ///</summary>
+    [XmlType("Vessel")]
+    public class VesselQuery
+    {     
+        ///<summary>
+        ///
+        ///</summary>
+        public int? mmsi{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        public int? imo{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        public string vessel_name{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        public string callsign{get;set;} 
+        ///<summary>
+        ///
+        ///</summary>             
+        public int? flag_code{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        public int? vessel_type_code{get;set;}
+
+        public bool IsEpmty()
+        {
+            return !imo.HasValue &&
+                !mmsi.HasValue &&
+                (String.IsNullOrEmpty(vessel_name) || vessel_name.Length<2) &&
+                (String.IsNullOrEmpty(callsign) || callsign.Length<2) &&
+                !flag_code.HasValue &&
+                !vessel_type_code.HasValue;
+        }
+    }
+    
+
+ 
+    ///<summary>
+    ///
+    ///</summary>   
     public class Database : DbContext
     {
-        public DbSet<VesselInfo> VesselInfo { get; set; }
+        ///<summary>
+        ///
+        ///</summary>
+        public DbSet<Vessel> Vessel { get; set; }
 
+        ///<summary>
+        ///
+        ///</summary>
         public Database(DbContextOptions<Database> options)
         : base(options)
         { }
 
+
+        ///<summary>
+        ///
+        ///</summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<VesselInfo>()
-                .HasKey(p => p.guid);
+            modelBuilder.Entity<Vessel>()
+                .HasKey(p => p.vessel_id);
         }
     } 
 
+
+    ///<summary>
+    ///
+    ///</summary>
     [XmlType("Vessel")]
-    public class VesselInfo
+    public class Vessel
     {
-        public Guid guid{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        public Guid? vessel_id{get;set;}        
+        ///<summary>
+        ///
+        ///</summary>
+        [Required]
         public int? mmsi{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        [Required]
         public int? imo{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        [Required]
         public string vessel_name{get;set;}
-        public string callsign{get;set;}                    
-        public string flag_country{get;set;}
-        public string vessel_type{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        [Required]
+        public string callsign{get;set;} 
+        ///<summary>
+        ///
+        ///</summary> 
+        [Required]                  
+        public int? flag_code{get;set;}
+        ///<summary>
+        ///
+        ///</summary>
+        [Required]
+        public int? vessel_type_code{get;set;}
 
-        //public int? width{get;set;}
-        //public int? height{get;set;}
-
-        public VesselInfo()
+        ///<summary>
+        ///
+        ///</summary>
+        public Vessel()
         {
 
         }
-        public VesselInfo(System.Data.IDataReader r)
+
+        ///<summary>
+        ///
+        ///</summary>
+        public Vessel(System.Data.IDataReader r)
         {
-            guid = (Guid)r["guid"];
+            vessel_id = (Guid)r["vessel_id"];
             mmsi = (int?)r["mmsi"];
             imo = (int?)r["imo"];
             vessel_name = (string)r["vessel_name"];
             callsign = (string)r["callsign"];              
-            flag_country = (string)r["flag_country"];
-            vessel_type = (string)r["vessel_type"];      
-        }           
+            flag_code = (int?)r["flag_code"];
+            vessel_type_code = (int?)r["vessel_type_code"];      
+        }    
+
+        ///<summary>
+        ///
+        ///</summary>
+        public override string ToString()
+        {
+            return String.Format("vessel_id={0}, mmsi={1}, imo={2}, vessel_name={3}", vessel_id, mmsi, imo, vessel_name);
+        }        
     }
 }
