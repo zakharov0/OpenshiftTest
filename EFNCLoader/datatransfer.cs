@@ -13,6 +13,36 @@ namespace DataTransfer
     
     }
 
+
+    public class Vessel2
+    {
+        public int? MMSI{ get; set; }// 273317970,        
+        public DateTime TIME{ get; set; }//2017-03-21T12:07:48Z",
+        public double? LONGITUDE{get;set;}
+        public double? LATITUDE{get;set;}
+        public double? COG { get; set; }// 233,
+        public double? SOG { get; set; }// 0
+        public int? HEADING { get; set; }// 197,
+        public int? NAVSTAT { get; set; }// "under way using engine",
+        public int? IMO{ get; set; }// 8723725,
+        public string NAME{ get; set; }// "M 0345 BUGSY",        
+        public string CALLSIGN{ get; set; }// "UFPA",
+        public int? TYPE{ get; set; }// "[not available]",
+        public int? A{ get; set; }// "[not available]",
+        public int? B{ get; set; }// "[not available]",
+        public int? C{ get; set; }// "[not available]",
+        public int? D{ get; set; }// "[not available]",
+        public double? DRAUGHT{ get; set; }// 129,
+        public string DEST{ get; set; }//"MURMANSK",
+        public string ETA{ get; set; }//"2017-03-17T02:00:00Z"
+
+        public override string ToString()
+        {
+            return String.Format("{0}\t{1}\t{2}", MMSI, IMO, NAME);
+        }
+
+    }
+
     public class Vessel
     {  
         public string name{ get; set; }// "M 0345 BUGSY",

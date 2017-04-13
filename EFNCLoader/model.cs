@@ -7,10 +7,11 @@ namespace EFNCLoader
     public class VesselTrafficContext : DbContext
     {
         public DbSet<Position> Positions { get; set; }
+        public DbSet<Position2> Positions2 { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlServer("Data Source=192.168.14.43;Failover Partner=192.168.14.44;Initial Catalog=Maps;");
+            optionsBuilder.UseSqlServer("Data Source=192.168.14.43;Failover Partner=192.168.14.44;Initial Catalog=Maps;User Id=Maps1410;Password=8ewREh4z");
             //optionsBuilder.UseSqlServer("Data Source=KOSMO-2-PC; Initial Catalog=LayersDB; Integrated Security=true");
          
         }
@@ -18,6 +19,7 @@ namespace EFNCLoader
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("FleetMonAIS");
+            modelBuilder.Entity<Position2>().HasKey(k => k.PositionId);
         }
     }
 
@@ -99,6 +101,66 @@ namespace EFNCLoader
             this.Latitude = ves.position.latitude;
             this.Sog = ves.position.speed;
 
+        }
+    }
+
+    
+    public class Position2{
+
+        public long PositionId{ get; set; }
+ // Voyage
+        public double? DRAUGHT{ get; set; }// 4.4,
+        public string DEST{ get; set; }//"MURMANSK",
+        public string ETA{ get; set; }//"2017-03-17T02:00:00Z"
+        public string NAME{ get; set; }// "M 0345 BUGSY",
+ 
+        public int? MMSI{ get; set; }// 273317970,        
+        public string CALLSIGN{ get; set; }// "UFPA",
+        public int? TYPE{ get; set; }// "SPC",
+        public int? IMO{ get; set; }// 8723725,
+
+
+    //Position
+        public DateTime TIME { get; set; }// "2017-03-21T12:09:51Z",
+        public double? COG { get; set; }// 233,
+        public int? NAVSTAT { get; set; }// "under way using engine",
+        public int? HEADING { get; set; }// 197,
+        public double? LONGITUDE { get; set; }// 33.009733,
+        public double? LATITUDE { get; set; }// 68.938667,
+        public double? SOG { get; set; }// 0
+
+        
+        public int? A { get; set; }// 197,
+        public int? B { get; set; }// 197,
+        public int? C { get; set; }// 197,
+        public int? D { get; set; }// 197,
+
+
+        public Position2()
+        {
+
+        }
+        public Position2(DataTransfer.Vessel2 ves)
+        {
+            CALLSIGN = ves.CALLSIGN;
+            COG = ves.COG;  
+            DEST = ves.DEST;
+            DRAUGHT = ves.DRAUGHT;
+            ETA = ves.ETA;
+            HEADING = ves.HEADING;
+            IMO = ves.IMO;
+            LATITUDE = ves.LATITUDE;
+            LONGITUDE = ves.LONGITUDE;
+            MMSI = ves.MMSI;
+            NAME = ves.NAME;
+            NAVSTAT = ves.NAVSTAT;
+            TIME = ves.TIME;
+            SOG = ves.SOG;
+            TYPE = ves.TYPE;
+            A = ves.A;
+            B = ves.B;
+            C = ves.C;
+            D = ves.D;
         }
     }
 }
