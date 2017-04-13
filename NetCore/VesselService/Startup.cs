@@ -59,6 +59,11 @@ namespace MicroService
                     }
             );
 
+            services.AddCors(options => 
+            {
+                options.AddPolicy("AllowAll", p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader().AllowCredentials());
+            });
+
 			Console.WriteLine("CONN="+Environment.GetEnvironmentVariable("CONNECTION_STRING"));
             services.AddDbContext<Database>(opt=>opt.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING")));
 
@@ -99,6 +104,7 @@ namespace MicroService
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
             loggerFactory.AddDebug();
 			app.UseStaticFiles();
+            app.UseCors("AllowAll");
             app.UseMvc();
   
             app.UseSwagger("swagger/{apiVersion}/Vessels.json");
