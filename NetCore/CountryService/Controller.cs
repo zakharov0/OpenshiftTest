@@ -27,6 +27,20 @@ namespace MicroService
 
     }
 
+    ///<summary>
+    ///
+    ///</summary>
+    [Route("/")]
+    public class HomeController : Controller
+    { 
+        ///<summary>
+        ///       
+        ///</summary>
+        public IActionResult Index() 
+        { 
+            return Redirect("/swagger/Country/ui");
+        }
+    }
 
     ///<summary>
     ///

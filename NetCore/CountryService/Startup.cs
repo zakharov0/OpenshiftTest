@@ -88,13 +88,13 @@ namespace MicroService
                         new Swashbuckle.Swagger.Model.Info
                         {
                             Version = "v2",
-                            Title = "MARINET 2.0",
+                            Title = "MARINET",
                             Description = "A RESTful API (version 2.0)"
                         },
                         new Swashbuckle.Swagger.Model.Info
                         {
                             Version = "v1",
-                            Title = "MARINET 1.0",
+                            Title = "MARINET",
                             Description = "A RESTful API (version 1.0)"
                         }
                     }, (description, version) =>
