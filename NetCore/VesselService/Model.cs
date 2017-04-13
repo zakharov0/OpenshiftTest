@@ -36,7 +36,9 @@ namespace MicroService
         ///
         ///</summary>
         public int? vessel_type_code{get;set;}
-
+        ///<summary>
+        ///
+        ///</summary>
         public bool IsEpmty()
         {
             return !imo.HasValue &&
