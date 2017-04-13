@@ -122,7 +122,7 @@ namespace MicroService
 
             app.UseMvc();
   
-            app.UseSwagger("swagger/api/{apiVersion}/Country.json");
+            app.UseSwagger("swagger/{apiVersion}/Country.json");
             app.UseSwaggerUi("swagger/Country/ui", "/swagger/v1/Country.json");
 
             var countries = db.Country.OrderBy(c=>c.country_id).ToArray<Country>();   

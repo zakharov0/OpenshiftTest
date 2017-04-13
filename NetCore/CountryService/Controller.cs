@@ -164,7 +164,7 @@ namespace MicroService
         /// <response code="400">Invalid input parameters</response>
         [ProducesResponseType(typeof(Country[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        [HttpGet("{limit:int?}/{offset:int?}")]
+        [HttpGet("GetAll/{limit:int?}/{offset:int?}")]
         public IActionResult Get([FromRoute]int limit=-1, [FromRoute]int offset=0) 
         {  
            // if (ModelState.IsValid && (offset<0))   
