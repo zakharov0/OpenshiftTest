@@ -9,7 +9,7 @@ namespace MicroService
     ///<summary>
     ///
     ///</summary>
-    [XmlType("Vessel")]
+    [XmlType("VesselQuery")]
     public class VesselQuery
     {     
         ///<summary>
