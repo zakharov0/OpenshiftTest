@@ -42,11 +42,29 @@ namespace EFNCLoader
             }
         }
 
+        enum Provider
+        {
+            FleetMon=0,
+            VtExplorer=1,
+            FleetMonFleet
+        }
+
         public static void Main(string[] args)
         {
+            Provider provider = Provider.FleetMonFleet;
+            string[] uri = {
+                "https://apiv2.fleetmon.com",
+                "https://ws.vtexplorer.com",
+                "https://apiv2.fleetmon.com"
+            };
+            string[] path = {  
+                "/regional_ais/?apikey=2add5120c9e5f4a4a33c8a5d75167880",
+                "/?username=SCANEX&password=5c9Ln34G2&method=getSnapshot&format=1&output=json&compress=0",
+                "/fleet/?apikey=403e256847ec1282bfe9ece271608a82"
+            }; 
             while(true)
             {
-                var vessels_received = (DataTransfer.Vessel2[])Run((obj)=>{
+                var vessels_received = Run((obj)=>{
                         //throw new Exception("TEST");
                         string stringData;
                         using (HttpClient client = new HttpClient())
@@ -54,52 +72,104 @@ namespace EFNCLoader
                             client.BaseAddress = (Uri)obj;
                             var contentType = new MediaTypeWithQualityHeaderValue("application/json");
                             client.DefaultRequestHeaders.Accept.Add(contentType);
-                            //HttpResponseMessage response = client.GetAsync("/regional_ais/?apikey=2add5120c9e5f4a4a33c8a5d75167880").Result;
-                            HttpResponseMessage response = client.GetAsync("/?username=SCANEX&password=5c9Ln34G2&method=getSnapshot&format=1&output=json&compress=0").Result;
+                            HttpResponseMessage response = client.GetAsync(path[(int)provider]).Result;
                             stringData = response.Content.ReadAsStringAsync().Result;
                         }
-                                   
-                        //string vessArray = stringData
-                        //    .Remove(stringData.LastIndexOf("}"))
-                        //    .Substring(stringData.IndexOf("["));                                    
-                        string vessArray = stringData
-                            .Remove(stringData.LastIndexOf("]"))
-                            .Substring(stringData.IndexOf("[", 2));
-                        return JsonConvert.DeserializeObject<DataTransfer.Vessel2[]>(
-                        //    Regex.Replace(vessArray, @".TIME.:([^,]+)\s*(,|})",  "\"TIME\":new Date(${1}000)$2")
-                        //, new JavaScriptDateTimeConverter());
-                         vessArray);
+
+                        switch (provider)
+                        {   
+                            case Provider.FleetMon:  
+                            {       
+                                string vessArray = stringData
+                                    .Remove(stringData.LastIndexOf("}"))
+                                    .Substring(stringData.IndexOf("[")); 
+                                return JsonConvert.DeserializeObject<DataTransfer.Vessel[]>( vessArray);
+                            }
+                            case Provider.FleetMonFleet:
+                            {       
+                                string vessArray = stringData
+                                    .Remove(stringData.LastIndexOf("}"))
+                                    .Substring(stringData.IndexOf("[")); 
+                                return JsonConvert.DeserializeObject<DataTransfer.IceBraker[]>( vessArray);
+                            }
+                            case Provider.VtExplorer:
+                            {
+                                string vessArray = stringData
+                                    .Remove(stringData.LastIndexOf("]"))
+                                    .Substring(stringData.IndexOf("[", 2));
+                                return JsonConvert.DeserializeObject<DataTransfer.Vessel2[]>(
+                                //    Regex.Replace(vessArray, @".TIME.:([^,]+)\s*(,|})",  "\"TIME\":new Date(${1}000)$2")
+                                //, new JavaScriptDateTimeConverter());
+                                vessArray);
+                            }
+                            default:
+                            return null; 
+                        }
                 }, 
-                //new Uri("https://apiv2.fleetmon.com"));
-                new Uri("https://ws.vtexplorer.com"));
+                new Uri(uri[(int) provider]));
                 
                 Run((obj)=>{
                     using (var db = new VesselTrafficContext())
                     {
-                        var vr = (DataTransfer.Vessel2[]) obj;
-                        foreach (var vessel in vr)
+
+                        var vr = (object[]) obj;
+                        foreach (var vesobj in vr)
                         {
                             try
                             {
                                 //throw new Exception("TEST DB FAIL");
-                                // var p = (from pos in db.Positions
-                                //         where pos.PositionReceived == vessel.position.received &&
-                                //         pos.VesselId == vessel.vessel_id && pos.Source == vessel.position.source
-                                //         select pos).SingleOrDefault();
-                                var p = (from pos in db.Positions2
-                                        where pos.TIME == vessel.TIME &&
-                                        pos.MMSI == vessel.MMSI && 
-                                        pos.LONGITUDE == vessel.LONGITUDE && pos.LATITUDE == vessel.LATITUDE
-                                        select pos).FirstOrDefault();                                        
-                                if (p == null)
+                                switch (provider)
                                 {
-                                    Console.WriteLine(vessel);
-                                    db.Positions2.Add(new Position2(vessel));
-                                    db.SaveChanges();
+                                    case Provider.FleetMon:
+                                    {
+                                        var vessel = (DataTransfer.Vessel)vesobj;
+                                        var p = (from pos in db.Positions
+                                                where pos.PositionReceived == vessel.position.received &&
+                                                pos.VesselId == vessel.vessel_id && pos.Source == vessel.position.source
+                                                select pos).SingleOrDefault();                                       
+                                        if (p == null)
+                                        {
+                                            Console.WriteLine(vessel);
+                                            db.Positions.Add(new Position(vessel));
+                                            db.SaveChanges();
+                                        }
+                                        break;
+                                    }
+                                    case Provider.FleetMonFleet:
+                                    {
+                                        var vessel = (DataTransfer.IceBraker)vesobj;
+                                        var p = (from pos in db.IceBreakers
+                                                where pos.PositionReceived == vessel.position.received &&
+                                                pos.VesselId == vessel.vessel_id && pos.Source == vessel.position.source
+                                                select pos).SingleOrDefault();                                       
+                                        if (p == null)
+                                        {
+                                             Console.WriteLine(vessel);
+                                            db.IceBreakers.Add(new IceBreaker(vessel));
+                                            db.SaveChanges();
+                                        }
+                                        break;
+                                    }
+                                    case Provider.VtExplorer:
+                                    {
+                                        var vessel = (DataTransfer.Vessel2)vesobj;
+                                        var p = (from pos in db.Positions2
+                                                where pos.TIME == vessel.TIME &&
+                                                pos.MMSI == vessel.MMSI && 
+                                                pos.LONGITUDE == vessel.LONGITUDE && pos.LATITUDE == vessel.LATITUDE
+                                                select pos).FirstOrDefault();                                        
+                                        if (p == null)
+                                        {
+                                            Console.WriteLine(vessel);
+                                            db.Positions2.Add(new Position2(vessel));
+                                            db.SaveChanges();
+                                        }
+                                        break;
+                                    }
                                 }
                             }
                             catch (Exception e)
-                            { throw new Exception(e + "\n" + vessel); }
+                            { throw new Exception(e + "\n" + vesobj); }
                         }
                     }
                     return null;
@@ -108,7 +178,7 @@ namespace EFNCLoader
                 Console.WriteLine("==============");
                 Console.WriteLine(DateTime.Now);
                 Console.WriteLine("==============");
-                System.Threading.Thread.Sleep(300*1000);
+                System.Threading.Thread.Sleep(600*1000);
             }
         }
     }

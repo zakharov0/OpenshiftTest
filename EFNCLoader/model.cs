@@ -7,7 +7,8 @@ namespace EFNCLoader
     public class VesselTrafficContext : DbContext
     {
         public DbSet<Position> Positions { get; set; }
-        public DbSet<Position2> Positions2 { get; set; }
+        public DbSet<Position2> Positions2 { get; set; }        
+        public DbSet<IceBreaker> IceBreakers { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -19,7 +20,9 @@ namespace EFNCLoader
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.HasDefaultSchema("FleetMonAIS");
+            modelBuilder.Entity<Position>().HasKey(k => k.PositionId);
             modelBuilder.Entity<Position2>().HasKey(k => k.PositionId);
+            modelBuilder.Entity<IceBreaker>().HasKey(k => k.PositionId);
         }
     }
 
