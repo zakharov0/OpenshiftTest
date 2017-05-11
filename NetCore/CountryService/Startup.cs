@@ -122,8 +122,8 @@ namespace MicroService
 
             app.UseMvc();
   
-            app.UseSwagger("swagger/{apiVersion}/Country.json");
-            app.UseSwaggerUi("swagger/Country/ui", "/swagger/v1/Country.json");
+            app.UseSwagger("swagger/{apiVersion}/Countries.json");
+            app.UseSwaggerUi("swagger/Countries/ui", "/swagger/v1/Countries.json");
 
             var countries = db.Country.OrderBy(c=>c.country_id).ToArray<Country>();   
             foreach(var country in countries) 
