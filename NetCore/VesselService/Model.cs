@@ -69,6 +69,30 @@ namespace MicroService
         : base(options)
         { }
 
+        ///<summary>
+        ///
+        ///</summary>
+        string _connStr;
+
+        ///<summary>
+        ///
+        ///</summary>
+        public Database(string connStr)
+        { 
+            //Console.WriteLine("CTR>>>>>>>>>>>>>" + connStr);
+            _connStr = connStr;
+        }  
+
+        ///<summary>
+        ///
+        ///</summary>
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) 
+        {
+            //Console.WriteLine("ONCGG>>>>>>>>>>>>>" + _connStr);
+            if (_connStr!=null)
+            optionsBuilder.UseNpgsql(_connStr);
+        }
+
 
         ///<summary>
         ///
@@ -122,6 +146,7 @@ namespace MicroService
         [Required]
         public int? vessel_type_code{get;set;}
 
+/*
         ///<summary>
         ///
         ///</summary>
@@ -143,7 +168,7 @@ namespace MicroService
             flag_code = (int?)r["flag_code"];
             vessel_type_code = (int?)r["vessel_type_code"];      
         }    
-
+*/
         ///<summary>
         ///
         ///</summary>
