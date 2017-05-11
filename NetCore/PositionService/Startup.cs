@@ -88,7 +88,6 @@ namespace MicroService
                     {
                         return description.RelativePath.Contains($"api/{version}");
                     });
-                    // bin/Debug/netcoreapp1.1/PositionService.xml
                     options.IncludeXmlComments(Environment.GetEnvironmentVariable("XDOC_HELP"));
                 }               
             );

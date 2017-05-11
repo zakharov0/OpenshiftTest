@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceRoot}\\bin\\Debug\\netcoreapp1.1\\VesselService.dll",
+            "program": "${workspaceRoot}\\bin\\Debug\\netcoreapp1.1\\PositionService.dll",
             "args": [],
             "cwd": "${workspaceRoot}",
             "stopAtEntry": false,

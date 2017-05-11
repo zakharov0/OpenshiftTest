@@ -45,14 +45,35 @@ namespace MicroService
     [Route("api/v1/[controller]")]
     public class VesselPositionsController : Controller
     {
+  
+        private const int MAX_TIMEOUT = 3;	
+
+        private Database _context;
+
         ///<summary>
         ///
         ///</summary>
-        ///<param name="query"></param>
+        ///<param name="context"></param>	
+		public VesselPositionsController(Database context)//
+        {
+            _context = context;
+            var timeout = MAX_TIMEOUT;
+            var envto = Environment.GetEnvironmentVariable("COM_TIMEOUT");
+            if (!String.IsNullOrEmpty(envto))
+                timeout = int.Parse(envto);
+            _context.Database.SetCommandTimeout(timeout); 
+        }
+
+        private const int MAX_PAGE_SIZE = 50;
+
+        ///<summary>
+        ///
+        ///</summary>
+        ///<param name="func"></param>
         ///<param name="limit"></param>
         ///<param name="offset"></param>
         ///<returns></returns> 
-        async Task<IActionResult> ProcessQueryAsync<T>(IQueryable<T> query, int limit, int offset)
+        async Task<IActionResult> ProcessQueryAsync<T>(Func<Database, IQueryable<T> > func, int limit, int offset)
         {
             if (!ModelState.IsValid)
             {
@@ -66,42 +87,58 @@ namespace MicroService
                 return new BadRequestObjectResult(el);
             }
 
-            Exception ex = null;
-            try
-            {
-                int page_size = int.Parse(Environment.GetEnvironmentVariable("PAGE_SIZE"));
-                if (limit<=0 || limit>page_size)
-                    limit = page_size;
+            string eps = Environment.GetEnvironmentVariable("PAGE_SIZE");
+            int ps = String.IsNullOrEmpty(eps) ? MAX_PAGE_SIZE : int.Parse(eps);
+            if (limit<=0 || limit>ps)
+                limit = ps;
+            Exception ex = null; 
+            var timeout = MAX_TIMEOUT;
+            var eto = Environment.GetEnvironmentVariable("CMD_TIMEOUT");
+            if (!String.IsNullOrEmpty(eto))
+                timeout = int.Parse(eto);           
 
-                var t = Task.Run(()=>{
-                    try{        
-                        return query.Skip(offset).Take(limit).ToArray();   
-                        //var a = query.Skip(offset).Take(limit).ToArray();   
-                        //foreach(var v in a)
-                            //Console.WriteLine(v);
-                        //return a;                      
-                    }
-                    catch(Exception)  
-                    {   
-                        Console.WriteLine("TRY REPEAT");
+            Func<T[]> func1 = ()=>{
+                    using ( var db = new Database(Environment.GetEnvironmentVariable("CONNECTION_STRING")))
+                    {
+                        db.Database.SetCommandTimeout(timeout); 
+                        var query = func(db);
+                        Console.WriteLine("RUN '"+Thread.CurrentThread.ManagedThreadId+"'");
                         var startwatch = DateTime.Now;
                         try{
-                            return  query.Skip(offset).Take(limit).ToArray(); 
+                            var a = query.Skip(offset).Take(limit).ToArray();
+                            Console.WriteLine("DONE '"+Thread.CurrentThread.ManagedThreadId+"'");
+                            return a;          
                         }
                         catch(Exception e)  
                         {  
-                            if ((DateTime.Now-startwatch).TotalSeconds>_context.Database.GetCommandTimeout()) 
+                            if ((DateTime.Now-startwatch).TotalSeconds > timeout) 
                             {
-                                Console.WriteLine("TIME OUT EXPIRED "+_context.Database.GetCommandTimeout());
+                                Console.WriteLine("TIME OUT EXPIRED " + timeout);
                                 throw new TimeoutException(e.Message);
                             }
                             else
+                            {
+                                Console.WriteLine("EXCEPTION OCCURED "+e.Message+" "+e.GetType()+" '"+Thread.CurrentThread.ManagedThreadId+"'");
                                 throw e;
-                        }
-                    }                     
-                });
-                var rv = await t;
-                return Ok(rv);
+                            }
+                        }    
+                    }           
+            };     
+
+            try
+            {
+                var task = Task.Run(func1);
+                var completedTask = await Task.WhenAny(task, Task.Delay(timeout * 1000 + 50));
+                if (completedTask==task)
+                {
+                    var rv = await task;
+                    return Ok(rv);
+                }
+                else
+                {
+                    var rv = await Task.Run(func1);
+                    return Ok(rv);
+                }              
             }
             catch(TimeoutException e){                                      
                 Response.StatusCode = 408;
@@ -111,227 +148,255 @@ namespace MicroService
                 Response.StatusCode = 500;
                 ex = e;
             }
+            finally
+            {
+                //db.Dispose();
+            }
+
             return new ObjectResult(new ErrorInfo[]{ new ErrorInfo(){Exception=ex.GetType().ToString(), Message=ex.Message} });
         }
-
 		
-        private readonly Database _context;
-
+       
         ///<summary>
-        ///
+        /// Get a vessel position by its ID
         ///</summary>
-        ///<param name="context"></param>	
-		public VesselPositionsController(Database context)//
-        {
-            _context = context;
-            var timeout = 4;
-            var envto = Environment.GetEnvironmentVariable("COM_TIMEOUT");
-            if (!String.IsNullOrEmpty(envto))
-                timeout = int.Parse(envto);
-            _context.Database.SetCommandTimeout(timeout); 
-        }
-
-
-        ///<summary>
-        /// Selects single vessel positions in a date interval
-        ///</summary>
-        ///<param name="vessel_id">a vessel ID</param>
-        ///<param name="start">a start date and time (UTC)</param>
-        ///<param name="end">a finish date and time (UTC)</param>
-        ///<param name="limit">a number of results displayed</param>
-        ///<param name="offset">a start of results displayed</param>
-        ///<returns>An array of vessel positions</returns>  
+        ///<remarks>
+        /// Test position_id=60905406
+        ///</remarks>
+        ///<param name="position_id">vessel position ID</param>
+        ///<returns>vessel position instance</returns>  
         /// <response code="400">Invalid input parameters</response>
-        /// <response code="404">Path not found. Supposedly invalid input date parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
         /// <response code="408">Timeout expired</response>
+        /// <response code="500">Request process failed on server</response>
         [ProducesResponseType(typeof(VesselPosition[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        [HttpGet("{vessel_id}/{start:datetime}/{end:datetime}/{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Get(Guid vessel_id, [FromRoute]DateTime start, [FromRoute]DateTime end, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpGet("{position_id}")]
+        public async Task<IActionResult> Get(int position_id) 
         {  
+            return await ProcessQueryAsync((context)=>{
+                return context.VesselPositions.Include("nav_status")
+                .Where(v=>v.position_id==position_id);
+            }, 1, 0);
+        }  
+              
+        ///<summary>
+        /// Get vessel positions by their IDs
+        ///</summary>
+        ///<remarks>
+        /// Test position_ids=[60905406,60905377,60904605,60903790]
+        ///</remarks>
+        ///<param name="position_ids">array of vessel position IDs</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">start of results displayed</param>
+        ///<returns>An array of vessel positions</returns>  
+        /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
+        /// <response code="500">Request process failed on server</response>
+        [ProducesResponseType(typeof(VesselPosition[]), 200)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpPost("{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> Get([FromBody]long[] position_ids, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        {             
             if (ModelState.IsValid)
             {
-                if  (start.TimeOfDay.TotalSeconds==0)
-                    start = start.Date.AddDays(1);
-                if (end>start)
-                    ModelState.AddModelError("Input parameters", "An value of end precedes a value of start"); 
-                Console.WriteLine(start + "" + start.Kind + " - " + end + "" + end.Kind);
+                string eps = Environment.GetEnvironmentVariable("PAGE_SIZE");
+                int ps = String.IsNullOrEmpty(eps) ? MAX_PAGE_SIZE : int.Parse(eps);
+                if (limit<=0 || limit>ps)
+                    limit = ps;
             }
-            return await ProcessQueryAsync(
-            _context.VesselPositions.Include("NavStatus").Where(
-                v=>v.vessel_id==vessel_id && v.ts_pos_utc<=start && v.ts_pos_utc>=end)
-                .OrderByDescending(v=>v.ts_pos_utc)
-            , limit, offset);
+            return await ProcessQueryAsync((context)=>{
+                return context.VesselPositions.Include("nav_status")
+                .Where(v=>position_ids.Skip(offset).Take(limit).Contains(v.position_id));
+            }, limit, 0);
         }  
 
+        ///<summary>
+        /// Selects positions of a specific vessel in a time period
+        ///</summary>
+        ///<remarks>
+        /// Test vessel_id=c12c4d21-5800-4af1-a7ab-b970f9f87819, start=2016-10-16, finish=2016-10-16 06:31:29
+        ///</remarks>
+        ///<param name="vessel_id">vessel ID</param>
+        ///<param name="start">start of period (UTC)</param>
+        ///<param name="finish">finish of period (UTC)</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">start of results displayed</param>
+        ///<returns>An array of vessel positions</returns>  
+        /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
+        /// <response code="500">Request process failed on server</response>
+        [ProducesResponseType(typeof(VesselPosition[]), 200)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpGet("{vessel_id}/{start:datetime}/{finish:datetime}/{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> Get(Guid vessel_id, [FromRoute]DateTime? start, [FromRoute]DateTime? finish, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        {  
+            DateTime s = start ?? DateTime.Today, f = finish ?? DateTime.Today;
+            if (ModelState.IsValid)
+            {
+                if  (f.TimeOfDay.TotalSeconds==0)
+                    f = f.Date.AddDays(1).AddMilliseconds(-1);
+                if (f<s)
+                    ModelState.AddModelError("Input parameters", "A start moment must precede a finish moment"); 
+                Console.WriteLine(s + "" + s.Kind + " - " + f + "" + f.Kind);
+            }
+            return await ProcessQueryAsync((context)=>{
+                return context.VesselPositions.Include("nav_status")
+                .Where(v=>v.vessel_id==vessel_id && s<=v.ts_pos_utc && v.ts_pos_utc<=f)
+                .OrderByDescending(v=>v.ts_pos_utc);
+            }, limit, offset);
+        }   
+
+        ///<summary>
+        /// Selects a latest position of a vessel
+        ///</summary>
+        ///<remarks>
+        /// Test vessel_id=c12c4d21-5800-4af1-a7ab-b970f9f87819
+        ///</remarks>
+        ///<param name="vessel_id">vessel ID</param>
+        ///<returns>An array of vessel positions</returns>  
+        /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
+        /// <response code="500">Request process failed on server</response>
+        [ProducesResponseType(typeof(VesselPosition[]), 200)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpGet("Last/{vessel_id}")]
+        public async Task<IActionResult> GetLast(Guid vessel_id) 
+        {  
+            return await ProcessQueryAsync((context)=>{
+                return context.VesselPositions.Include("nav_status")
+                .Where(v=>v.vessel_id==vessel_id)
+                .OrderByDescending(v=>v.ts_pos_utc);
+            }, 1, 0);
+        }  
  
+        ///<summary>
+        /// Selects latest positions of a set of vessels
+        ///</summary>
+        ///<remarks>
+        /// Test vessel_ids=['42977b8c-7d0b-44e4-81d0-15bf4ce1338a','947ecba6-5c1b-4475-ba4f-b5fcb87d7904','79a5aae6-23a0-4e4b-99a1-3b99c4485ed0']
+        ///</remarks>
+        ///<param name="vessel_ids">vessel ID array</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">start of results displayed</param>
+        ///<returns>An array of vessel positions</returns>  
+        /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
+        /// <response code="500">Request process failed on server</response>
+        [ProducesResponseType(typeof(VesselPosition[]), 200)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpPost("Last/{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> GetLast([FromBody]Guid[] vessel_ids, [FromRoute]int limit=-1, [FromRoute]int offset=0)
+        {             
+            if (ModelState.IsValid)
+            {
+                string eps = Environment.GetEnvironmentVariable("PAGE_SIZE");
+                int ps = String.IsNullOrEmpty(eps) ? MAX_PAGE_SIZE : int.Parse(eps);
+                if (limit<=0 || limit>ps)
+                    limit = ps;
+            }
+
+            var a = vessel_ids.Skip(offset).Take(limit).Select(uuid=>String.Format(@"select max(state_id) state_id from ""VesselState"" where vessel_id='{0}'", uuid));
+            string sql = String.Format(@"
+            select vp.* from ""VesselState"" vp, ({0}) mp
+            where mp.state_id=vp.state_id
+            ", String.Join(" union ", a));
+            //Console.WriteLine(sql);
+
+            return await ProcessQueryAsync((context)=>{
+            return context.VesselPositions.FromSql(sql).Include("nav_status");
+            }, limit, 0);
+        }  
+
+        private const int MAX_RADIUS = 100;
+        private const int MAX_TIMESPAN = 60;
+
         ///<summary>
         /// Selects vessels nearby withinin a target radius
         ///</summary>
-        ///<param name="vessel_id">a vessel ID</param>
-        ///<param name="radius">the radius of a search area in kilometers</param>
-        ///<param name="timespan">a time interval in minutes</param>
-        ///<param name="limit">a number of results displayed</param>
-        ///<param name="offset">a start of results displayed</param>
+        ///<remarks>
+        /// Test position_id=60904595, radius=40, timespan=30
+        ///</remarks>
+        ///<param name="position_id">vessel position ID nearby to search</param>
+        ///<param name="radius">radius of search area in kilometers (max 100)</param>
+        ///<param name="timespan">time interval in minutes (max 60)</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">start of results displayed</param>
         ///<returns>An array of vessel positions</returns>  
         /// <response code="400">Invalid input parameters</response>
-        /// <response code="404">Path not found. Supposedly invalid input date parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
         /// <response code="408">Timeout expired</response>
-        [ProducesResponseType(typeof(VesselPosition[]), 200)]
+        /// <response code="500">Request process failed on server</response>
+        [ProducesResponseType(typeof(VesselRelativePosition[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        [HttpGet("Nearby/{vessel_id}/{radius:int?}/{timespan:int?}/{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Nearby(Guid vessel_id, [FromRoute]int radius=50, [FromRoute]int? timespan=10, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpGet("Nearby/{position_id}/{radius:int?}/{timespan:int?}/{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> Nearby(long position_id, [FromRoute]int radius=-1, [FromRoute]int timespan=-1, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
         { 
-
-            return await ProcessQueryAsync(
-            _context.VesselPositions
-//             .FromSql(@" select *
-//  from ""VesselState"" 
-// where state_id=60904595") 
-            .FromSql(@"with 
-""Target"" as (
-    select wkb_geometry::geography point, ST_Buffer(ST_Point(157.069248333333,49.998106666666)::geography, " + (radius*1000) + @") buffer 
-    from ""VesselState"" 
-    where state_id=60904595),
-""LatestPostions"" as (
-select vessel_id, max(state_id) state_id
-from ""VesselState"" v2 where state_id!=60904595 and 
-ST_Covers( ST_SetSRID((select buffer from ""Target"" limit 1)::geometry, 0), wkb_geometry ) 
-and ts_pos_utc>='2016-10-16 5:29'::timestamp and  ts_pos_utc<='2016-10-16 6:33' 
-group by vessel_id)
-select 
-degrees(ST_Azimuth((select point from ""Target"" limit 1), wkb_geometry)) bearing,
-ST_Distance((select point from ""Target"" limit 1)::geography, wkb_geometry) distance,
-vp.* from ""LatestPostions"" lp, ""VesselState"" vp where lp.state_id=vp.state_id order by vp.ts_pos_utc desc")
-                //.OrderByDescending(v=>v.ts_pos_utc)
-            , limit, offset);
-        }             
-/*
-        ///<summary>
-        /// Searches vessels by name
-        ///</summary>
-        ///<param name="name">a name pattern</param>
-        ///<param name="limit">a number of results displayed</param>
-        ///<param name="offset">a start of results displayed</param>
-        ///<returns>An array of vessels</returns>   
-        /// <response code="400">Invalid input parameters</response>
-        [ProducesResponseType(typeof(Vessel[]), 200)]
-        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        [HttpGet("Search/{name}/{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Search(string name, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
-        {  
-            return await ProcessQueryAsync(
-            _context.Vessel.Where(v=>v.vessel_name.Contains(name.ToUpper())).OrderBy(v=>v.vessel_id)
-            , limit, offset);
-        }
-
-        ///<summary>
-        /// Advanced vessels search
-        ///</summary>
-        ///<param name="query">query parameters</param>
-        ///<param name="limit">a number of results displayed</param>
-        ///<param name="offset">a start of results displayed</param>
-        ///<returns>An array of vessels</returns>   
-        /// <response code="400">Invalid input parameters</response>
-        [ProducesResponseType(typeof(Vessel[]), 200)]
-        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        [HttpPost("Search/{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Search([FromBody]VesselQuery query, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
-        {  
-            var q = _context.Vessel.AsQueryable();
             if (ModelState.IsValid)
             {
-                if (query.IsEpmty())   
-                    ModelState.AddModelError("Input parameters", "Empty query"); 
-                if (query.imo.HasValue)
-                    q = q.Where(v=>v.imo!=null && v.imo==query.imo);
-                if (query.mmsi.HasValue)
-                    q = q.Where(v=>v.mmsi!=null && v.mmsi==query.mmsi);
-                if (!String.IsNullOrEmpty(query.vessel_name) && query.vessel_name.Length>1)
-                    q = q.Where(v=>v.vessel_name!=null && v.vessel_name.Contains(query.vessel_name.ToUpper().ToString()));
-                if (!String.IsNullOrEmpty(query.callsign) && query.callsign.Length>1)
-                    q = q.Where(v=>v.callsign!=null && v.callsign.Contains(query.callsign.ToUpper().ToString()));
-                if (query.flag_code.HasValue)
-                    q = q.Where(v=>v.flag_code!=null && v.flag_code==query.flag_code);
-                if (query.vessel_type_code.HasValue)
-                    q = q.Where(v=>v.vessel_type_code!=null && v.vessel_type_code==query.vessel_type_code);
-            }  
-            return await ProcessQueryAsync(
-            q.OrderBy(v=>v.vessel_id), limit, offset);
-        }
-
+                if (timespan<=0 || timespan>MAX_TIMESPAN)
+                    timespan = MAX_TIMESPAN;
+                if (radius<=0 || radius>MAX_RADIUS)
+                    radius = MAX_RADIUS;
+            }
+            //60904595, 45
+            return await ProcessQueryAsync((context)=>{
+                var sql = String.Format(@"select {0} base_position_id,
+degrees(ST_Azimuth((select wkb_geometry::geography from ""VesselState"" where state_id={0}), wkb_geometry)) bearing,
+ST_Distance((select wkb_geometry::geography from ""VesselState"" where state_id={0})::geography, wkb_geometry) distance,
+vp.*
+from (
+      select vessel_id, max(state_id) state_id
+      from ""VesselState"" v2 where state_id!={0} and
+      ST_Covers( ST_SetSRID((select ST_Buffer(ST_Point(longitude,latitude)::geography, {1}000) from ""VesselState"" where state_id={0})::geometry, 0), wkb_geometry )
+      and ts_pos_utc>=(select ts_pos_utc from ""VesselState"" where state_id={0}) and 
+      ts_pos_utc<=(select ts_pos_utc + interval '{2} minutes' from ""VesselState"" where state_id={0})
+      group by vessel_id
+) lp, ""VesselState"" vp
+where lp.state_id=vp.state_id
+order by vp.ts_pos_utc desc", position_id, radius, timespan);
+                //Console.WriteLine(sql);
+                return context.VesselRelativePositions 
+                .FromSql(sql).Include("nav_status");
+            }, limit, offset);
+        }  
+  
         ///<summary>
-        /// Selects a specific vessel
+        /// Inserts or updates vessel position
         ///</summary>
         ///<remarks>
-        /// The example: api/v1/Vessels/a21c6578-6281-48ad-8328-367456661e1a
+        /// Stub
         ///</remarks>
-        ///<param name="uuid">a vessel identificator</param>
-        ///<returns>The vessel instance</returns> 
-        /// <response code="400">Invalid input parameters</response>
-        // <response code="408">Request Timeout</response>
-        [HttpGet("{uuid}")]
-        [ProducesResponseType(typeof(Vessel[]), 200)]
-        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Get([FromRoute]Guid uuid)
-        { 
-            return await ProcessQueryAsync(_context.Vessel.Where(v=>v.vessel_id==uuid), 1, 0);
-        }
-
-        ///<summary>
-        /// Inserts or updates vessels
-        ///</summary>
-        ///<param name="data">an array of vessels data</param>
+        ///<param name="data">vessel position data</param>
+        /// <response code="201">A newly created vessel position</response>
         /// <response code="204">Success with a response having an enpty content</response>
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
         /// <response code="415">An unsupported media type</response>
-        // <response code="201">Returns the newly created item</response>
-        // POST api/values
-        [HttpPost]
-        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Post([FromBody]Vessel[] data)
-        {  
-            if (ModelState.IsValid && (data==null || data.Length==0))   
-                ModelState.AddModelError("Input parameters", "Empty input");     
-            if (ModelState.IsValid)
-            {
-                await Task.Delay(10);
-                foreach(var v in data)
-                    Console.WriteLine(v + "UPDATED");
-                return new NoContentResult();
-            }
-            else
-            {
-                var  el = new List<ErrorInfo>();
-                foreach(var state in ModelState)
-                    foreach(var e in state.Value.Errors)
-                        if (e.Exception!=null)
-                            el.Add(new ErrorInfo(){Exception=e.Exception.GetType().ToString(), Message=e.Exception.Message});
-                        else
-                            el.Add(new ErrorInfo(){Exception=null, Message=e.ErrorMessage});
-                return new BadRequestObjectResult(el);
-            }
-        }
-
-        ///<summary>
-        /// Inserts or updates vessel
-        ///</summary>
-        ///<param name="data">the vessel data</param>
-        /// <response code="201">A newly created vessel object</response>
-        /// <response code="204">Success with a response having an enpty content</response>
-        /// <response code="400">Invalid input parameters</response>
-        /// <response code="415">An unsupported media type</response>
+        /// <response code="500">Request process failed on server</response>
         [HttpPut]
-        [ProducesResponseType(typeof(Vessel[]), 201)]
+        [ProducesResponseType(typeof(VesselPosition[]), 201)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Put([FromBody]Vessel data)
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public async Task<IActionResult> Put([FromBody]VesselPosition data)
         {                   
             if (ModelState.IsValid && (data==null))   
                 ModelState.AddModelError("Input parameters", "Empty input");     
             if (ModelState.IsValid)
             {
                 await Task.Delay(10); 
-                if (data.vessel_id.HasValue)
+                if (_context.VesselPositions.Any(vp=>vp.position_id==data.position_id))
                 { 
                     Console.WriteLine(data + "UPDATED");
                     return new NoContentResult();
@@ -339,8 +404,9 @@ vp.* from ""LatestPostions"" lp, ""VesselState"" vp where lp.state_id=vp.state_i
                 else
                 {               
                     Response.StatusCode = 201;
-                    data.vessel_id = Guid.NewGuid();
-                    return new ObjectResult(new Vessel[]{data});
+                    Console.WriteLine("LAST_ID " + _context.VesselPositions.Max(vp=>vp.position_id));
+                    //data.position_id = Guid.NewGuid();
+                    return new ObjectResult(new VesselPosition[]{data});
                 }
             }
             else
@@ -357,26 +423,90 @@ vp.* from ""LatestPostions"" lp, ""VesselState"" vp where lp.state_id=vp.state_i
         }
 
         ///<summary>
-        /// Deletes vessels
+        /// Inserts or updates vessel positions
         ///</summary>
         ///<remarks>
-        /// The example: &lt;ArrayOfGuid&gt;&lt;guid&gt;a21c6578-6281-48ad-8328-367456661e1a&lt;/guid&gt;&lt;/ArrayOfGuid&gt;
+        /// Stub
         ///</remarks>
-        ///<param name="uuids">an array of vessel identificators</param>
+        ///<param name="data">array of vessel positions</param>
+        /// <response code="201">A newly created vessel position</response>
         /// <response code="204">Success with a response having an enpty content</response>
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
         /// <response code="415">An unsupported media type</response>
-        //[HttpDelete("{id}")]
+        /// <response code="500">Request process failed on server</response>
+        [HttpPost]
+        [ProducesResponseType(typeof(VesselPosition[]), 201)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public async Task<IActionResult> Post([FromBody]VesselPosition[] data)
+        {                   
+            if (ModelState.IsValid && (data==null))   
+                ModelState.AddModelError("Input parameters", "Empty input");     
+            if (ModelState.IsValid)
+            {
+                await Task.Delay(10); 
+                var newly = new List<VesselPosition>();
+                foreach(var vespos in data)
+                    if (_context.VesselPositions.Any(vp=>vp.position_id==vespos.position_id))
+                    { 
+                        Console.WriteLine(vespos + " UPDATED");
+                    }
+                    else
+                    {  
+                        newly.Add(vespos);
+                        Console.WriteLine(vespos + " INSERTED");
+                        //data.position_id = Guid.NewGuid();
+                    }
+                if (newly.Count>0)   
+                {              
+                    Response.StatusCode = 201;               
+                    return new ObjectResult(newly.ToArray());
+                }
+                else
+                {
+                    return new NoContentResult();
+                }
+
+            }
+            else
+            {
+                var  el = new List<ErrorInfo>();
+                foreach(var state in ModelState)
+                    foreach(var e in state.Value.Errors)
+                        if (e.Exception!=null)
+                            el.Add(new ErrorInfo(){Exception=e.Exception.GetType().ToString(), Message=e.Exception.Message});
+                        else
+                            el.Add(new ErrorInfo(){Exception=null, Message=e.ErrorMessage});
+                return new BadRequestObjectResult(el);
+            }
+        }
+
+        ///<summary>
+        /// Deletes vessel positions
+        ///</summary>
+        ///<remarks>
+        /// Stub
+        ///</remarks>
+        ///<param name="ids">array of vessel position IDs</param>
+        /// <response code="204">Success with a response having an enpty content</response>
+        /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="408">Timeout expired</response>
+        /// <response code="415">An unsupported media type</response>
+        /// <response code="500">Request process failed on server</response>
         [HttpDelete]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Delete([FromBody]Guid[] uuids)
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public async Task<IActionResult> Delete([FromBody]long[] ids)
         {             
-            if (ModelState.IsValid && (uuids==null || uuids.Length==0))   
+            if (ModelState.IsValid && (ids==null || ids.Length==0))   
                 ModelState.AddModelError("Input parameters", "Empty input");     
             if (ModelState.IsValid)
             {
                 await Task.Delay(10);
-                foreach(var uuid in uuids)
+                foreach(var uuid in ids)
                     Console.WriteLine(uuid + " DELETED");
                 return new NoContentResult();            
             }
@@ -391,7 +521,6 @@ vp.* from ""LatestPostions"" lp, ""VesselState"" vp where lp.state_id=vp.state_i
                             el.Add(new ErrorInfo(){Exception=null, Message=e.ErrorMessage});
                 return new BadRequestObjectResult(el);
             }
-        }
-*/
+        }    
     }
 }
