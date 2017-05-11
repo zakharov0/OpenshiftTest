@@ -38,7 +38,7 @@ namespace MicroService
         ///</summary>
         public IActionResult Index() 
         { 
-            return Redirect("/swagger/VesselType/ui");
+            return Redirect("/swagger/VesselTypes/ui");
         }
     }
 
@@ -46,7 +46,7 @@ namespace MicroService
     ///
     ///</summary>
     [Route("api/v1/[controller]")]
-    public class VesselTypeController : Controller
+    public class VesselTypesController : Controller
     {
         ///<summary>
         ///
@@ -69,6 +69,11 @@ namespace MicroService
                 return new BadRequestObjectResult(el);
             }
 
+            string eps = Environment.GetEnvironmentVariable("PAGE_SIZE");
+            int ps = String.IsNullOrEmpty(eps) ? MAX_PAGE_SIZE : int.Parse(eps);
+            if (limit<=0 || limit>ps)
+                limit = ps;
+
             try
             {
                 return Ok(query.Skip(offset).Take(limit).ToArray());
@@ -87,7 +92,7 @@ namespace MicroService
         ///</summary>
         ///<param name="context"></param>	
         ///<param name="repo"></param>
-		public VesselTypeController(Database context, List<VesselType> repo)
+		public VesselTypesController(Database context, List<VesselType> repo)
         {
             _context = context;
             _repo = repo;
@@ -96,13 +101,16 @@ namespace MicroService
         ///<summary>
         /// Selects all types
         ///</summary>
-        ///<param name="limit">a number of results displayed</param>
-        ///<param name="offset">a start of results displayed</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessel tyes</returns>  
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="500">Request process failed on server</response>
         [ProducesResponseType(typeof(VesselType[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        [HttpGet("GetAll/{limit:int?}/{offset:int?}")]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        [HttpGet("All/{limit:int?}/{offset:int?}")]
         public IActionResult Get([FromRoute]int limit=-1, [FromRoute]int offset=0) 
         { 
             return ProcessQuery(_repo.OrderBy(c=>c.vessel_type).ThenBy(c=>c.vessel_type_code).AsQueryable(), limit, offset);
@@ -111,59 +119,95 @@ namespace MicroService
         ///<summary>
         /// Selects a specific vessel type
         ///</summary>
-        ///<param name="code">a type identificator</param>
-        ///<returns>An array of the only vessel type instance or nothing</returns> 
+        ///<param name="code">type code</param>
+        ///<returns>A vessel type</returns> 
         /// <response code="400">Invalid input parameters</response>
-        // <response code="408">Request Timeout</response>
-        //<remarks>
-        // The path example: api/v1/Country/f8541027-4f68-4ad3-8ef7-29d04ba06189
-        //</remarks>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="500">Request process failed on server</response>
         [HttpGet("{code}")]
         [ProducesResponseType(typeof(VesselType[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
         public IActionResult Get(int code)
         { 
             return ProcessQuery(_repo.Where(c=>c.vessel_type_code==code).AsQueryable(), 1, 0);
-        }        
+        } 
+
+        private const int MAX_PAGE_SIZE = 50;
+
+        ///<summary>
+        /// Selects vessel type
+        ///</summary>
+        ///<param name="codes">array of type codes</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
+        ///<returns>Vessel types</returns> 
+        /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="500">Request process failed on server</response>
+        [HttpPost("{limit:int?}/{offset:int?}")]
+        [ProducesResponseType(typeof(VesselType[]), 200)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public IActionResult Get([FromBody]int[] codes, [FromRoute]int limit=-1, [FromRoute]int offset=0)
+        { 
+            if (ModelState.IsValid)
+            {
+                string eps = Environment.GetEnvironmentVariable("PAGE_SIZE");
+                int ps = String.IsNullOrEmpty(eps) ? MAX_PAGE_SIZE : int.Parse(eps);
+                if (limit<=0 || limit>ps)
+                    limit = ps;
+            }
+            var a = codes.Skip(offset).Take(limit);
+            return ProcessQuery(_repo.Where(v=>v.vessel_type_code!=null && a.Contains((int)v.vessel_type_code)).AsQueryable(), limit, 0);
+        }                
 
         ///<summary>
         /// Searches vessel type by name
         ///</summary>
-        ///<param name="name">a name search pattern</param>
-        ///<param name="limit">a number of results displayed</param>
-        ///<param name="offset">a start of results displayed</param>
+        ///<param name="name">name search pattern</param>
+        ///<param name="limit">number of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessel types</returns>   
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
+        /// <response code="500">Request process failed on server</response>
         [ProducesResponseType(typeof(VesselType[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
         [HttpGet("Search/{name}/{limit:int?}/{offset:int?}")]
         public IActionResult Search(string name, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
         {  
             return ProcessQuery(_repo.Where(c=>c.vessel_type!=null && c.vessel_type.ToLower().Contains(name.ToLower()))
             .OrderBy(c=>c.vessel_type).ThenBy(c=>c.vessel_type_code).AsQueryable(), limit, offset);
         }
-        
-/*
+
+        /////////////////////////////////////////////////////////////////////////////////////////////
+
         ///<summary>
-        /// Inserts or updates vessels
+        /// Inserts or updates vessel type
         ///</summary>
-        ///<param name="data">an array of vessels data</param>
+        ///<remarks>
+        /// Stub (out of funvtion)
+        ///</remarks>
+        ///<param name="data">vessel type data</param>
+        /// <response code="201">A newly created vessel type object</response>
         /// <response code="204">Success with a response having an enpty content</response>
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
         /// <response code="415">An unsupported media type</response>
-        // <response code="201">Returns the newly created item</response>
-        // POST api/values
-        [HttpPost]
+        /// <response code="500">Request process failed on server</response>
+        [HttpPut]
+        [ProducesResponseType(typeof(VesselType[]), 201)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Post([FromBody]Vessel[] data)
-        {  
-            if (ModelState.IsValid && (data==null || data.Length==0))   
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public async Task<IActionResult> Put([FromBody]VesselType data)
+        {                   
+            if (ModelState.IsValid && (data==null))   
                 ModelState.AddModelError("Input parameters", "Empty input");     
             if (ModelState.IsValid)
             {
-                await Task.Delay(10);
-                foreach(var v in data)
-                    Console.WriteLine(v + "UPDATED");
+                await Task.Delay(10); 
                 return new NoContentResult();
             }
             else
@@ -180,34 +224,30 @@ namespace MicroService
         }
 
         ///<summary>
-        /// Inserts or updates vessel
+        /// Inserts or updates vessel types
         ///</summary>
-        ///<param name="data">the vessel data</param>
-        /// <response code="201">A newly created vessel object</response>
+        ///<remarks>
+        /// Stub (out of funvtion)
+        ///</remarks>
+        ///<param name="data">vessel types data</param>
         /// <response code="204">Success with a response having an enpty content</response>
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
         /// <response code="415">An unsupported media type</response>
-        [HttpPut]
-        [ProducesResponseType(typeof(Vessel[]), 201)]
+        /// <response code="500">Request process failed on server</response>
+        // <response code="201">Returns the newly created item</response>
+        // POST api/values
+        [HttpPost]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Put([FromBody]Vessel data)
-        {                   
-            if (ModelState.IsValid && (data==null))   
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public async Task<IActionResult> Post([FromBody]VesselType[] data)
+        {  
+            if (ModelState.IsValid && (data==null || data.Length==0))   
                 ModelState.AddModelError("Input parameters", "Empty input");     
             if (ModelState.IsValid)
             {
                 await Task.Delay(10); 
-                if (data.vessel_id.HasValue)
-                { 
-                    Console.WriteLine(data + "UPDATED");
-                    return new NoContentResult();
-                }
-                else
-                {               
-                    Response.StatusCode = 201;
-                    data.vessel_id = Guid.NewGuid();
-                    return new ObjectResult(new Vessel[]{data});
-                }
+                return new NoContentResult();
             }
             else
             {
@@ -223,27 +263,27 @@ namespace MicroService
         }
 
         ///<summary>
-        /// Deletes vessels
+        /// Deletes vessel types
         ///</summary>
         ///<remarks>
-        /// The example: &lt;ArrayOfGuid&gt;&lt;guid&gt;a21c6578-6281-48ad-8328-367456661e1a&lt;/guid&gt;&lt;/ArrayOfGuid&gt;
+        /// Stub (out of funvtion)
         ///</remarks>
-        ///<param name="uuids">an array of vessel identificators</param>
+        ///<param name="codes">an array of type codes</param>
         /// <response code="204">Success with a response having an enpty content</response>
         /// <response code="400">Invalid input parameters</response>
+        /// <response code="404">Path not found. Invalid request format</response>
         /// <response code="415">An unsupported media type</response>
-        //[HttpDelete("{id}")]
+        /// <response code="500">Request process failed on server</response>
         [HttpDelete]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
-        public async Task<IActionResult> Delete([FromBody]Guid[] uuids)
+        [ProducesResponseType(typeof(ErrorInfo[]), 500)]
+        public async Task<IActionResult> Delete([FromBody]int[] codes)
         {             
-            if (ModelState.IsValid && (uuids==null || uuids.Length==0))   
+            if (ModelState.IsValid && (codes==null || codes.Length==0))   
                 ModelState.AddModelError("Input parameters", "Empty input");     
             if (ModelState.IsValid)
             {
                 await Task.Delay(10);
-                foreach(var uuid in uuids)
-                    Console.WriteLine(uuid + " DELETED");
                 return new NoContentResult();            
             }
             else
@@ -258,6 +298,6 @@ namespace MicroService
                 return new BadRequestObjectResult(el);
             }
         }
-*/
+
     }
 }

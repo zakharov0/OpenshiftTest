@@ -104,8 +104,8 @@ namespace MicroService
 
             app.UseMvc();
   
-            app.UseSwagger("swagger/{apiVersion}/VesselType.json");
-            app.UseSwaggerUi("swagger/VesselType/ui", "/swagger/v1/VesselType.json");
+            app.UseSwagger("swagger/{apiVersion}/VesselTypes.json");
+            app.UseSwaggerUi("swagger/VesselTypes/ui", "/swagger/v1/VesselTypes.json");
 
             var vestypes = db.VesselType.OrderBy(c=>c.vessel_type_code).ToArray<VesselType>();   
             foreach(var vt in vestypes) 

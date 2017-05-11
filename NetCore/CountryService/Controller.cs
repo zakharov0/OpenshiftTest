@@ -99,7 +99,7 @@ namespace MicroService
         /// Selects all countries
         ///</summary>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of countries</returns>  
         /// <response code="400">Invalid input parameters</response>
         /// <response code="404">Path not found. Invalid request format</response>
