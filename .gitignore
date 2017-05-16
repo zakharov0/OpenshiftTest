@@ -4,3 +4,7 @@
 /EFNCLoader/Migrations
 /EFNCLoader/project.lock.json
 /NetCoreBuilded/VesselService
+/NetCore/CountryService/env.bat
+/NetCore/PositionService/env.bat
+/NetCore/TypeService/env.bat
+/NetCore/VesselService/env.bat
