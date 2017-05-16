@@ -189,7 +189,7 @@ namespace MicroService
         ///</remarks>
         ///<param name="position_ids">array of vessel position IDs</param>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessel positions</returns>  
         /// <response code="400">Invalid input parameters</response>
         /// <response code="404">Path not found. Invalid request format</response>
@@ -224,7 +224,7 @@ namespace MicroService
         ///<param name="start">start of period (UTC)</param>
         ///<param name="finish">finish of period (UTC)</param>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessel positions</returns>  
         /// <response code="400">Invalid input parameters</response>
         /// <response code="404">Path not found. Invalid request format</response>
@@ -285,7 +285,7 @@ namespace MicroService
         ///</remarks>
         ///<param name="vessel_ids">vessel ID array</param>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessel positions</returns>  
         /// <response code="400">Invalid input parameters</response>
         /// <response code="404">Path not found. Invalid request format</response>
@@ -330,7 +330,7 @@ namespace MicroService
         ///<param name="radius">radius of search area in kilometers (max 100)</param>
         ///<param name="timespan">time interval in minutes (max 60)</param>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessel positions</returns>  
         /// <response code="400">Invalid input parameters</response>
         /// <response code="404">Path not found. Invalid request format</response>
@@ -375,7 +375,7 @@ order by vp.ts_pos_utc desc", position_id, radius, timespan);
         /// Inserts or updates vessel position
         ///</summary>
         ///<remarks>
-        /// Stub
+        /// Stub (out of function)
         ///</remarks>
         ///<param name="data">vessel position data</param>
         /// <response code="201">A newly created vessel position</response>
@@ -426,7 +426,7 @@ order by vp.ts_pos_utc desc", position_id, radius, timespan);
         /// Inserts or updates vessel positions
         ///</summary>
         ///<remarks>
-        /// Stub
+        /// Stub (out of function)
         ///</remarks>
         ///<param name="data">array of vessel positions</param>
         /// <response code="201">A newly created vessel position</response>
@@ -487,7 +487,7 @@ order by vp.ts_pos_utc desc", position_id, radius, timespan);
         /// Deletes vessel positions
         ///</summary>
         ///<remarks>
-        /// Stub
+        /// Stub (out of function)
         ///</remarks>
         ///<param name="ids">array of vessel position IDs</param>
         /// <response code="204">Success with a response having an enpty content</response>

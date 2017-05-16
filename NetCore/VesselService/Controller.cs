@@ -6,6 +6,10 @@ using System.Xml.Serialization;
 using Microsoft.EntityFrameworkCore; 
 using System.Threading;  
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;  
 
 namespace MicroService
 {
@@ -44,7 +48,7 @@ namespace MicroService
     ///</summary>
     [Route("api/v1/[controller]")]
     public class VesselsController : Controller
-    {
+    {  
   
         private const int MAX_TIMEOUT = 3;
         private const int MAX_PAGE_SIZE = 50;
@@ -131,10 +135,6 @@ namespace MicroService
                 Response.StatusCode = 500;
                 ex = e;
             }
-            finally
-            {
-                //db.Dispose();
-            }
 
             return new ObjectResult(new ErrorInfo[]{ new ErrorInfo(){Exception=ex.GetType().ToString(), Message=ex.Message} });
         }
@@ -172,6 +172,7 @@ namespace MicroService
         [ProducesResponseType(typeof(ErrorInfo[]), 500)]
         public async Task<IActionResult> Get([FromRoute]Guid uuid)
         { 
+            GetCountries
             return await ProcessQueryAsync((context)=>{
                 return context.Vessel.Where(v=>v.vessel_id==uuid);
             }, 1, 0);
@@ -181,7 +182,7 @@ namespace MicroService
         /// Selects all vessels
         ///</summary>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed (0 based)</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessels</returns>  
         /// <response code="400">Invalid input parameters</response>
         /// <response code="408">Timeout expired</response>
@@ -202,7 +203,7 @@ namespace MicroService
         ///</summary>
         ///<param name="name">name pattern</param>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed (0 based)</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessels</returns>   
         /// <response code="400">Invalid input parameters</response>
         /// <response code="408">Timeout expired</response>
@@ -226,7 +227,7 @@ namespace MicroService
         ///</remarks>
         ///<param name="query">query parameters</param>
         ///<param name="limit">number of results displayed</param>
-        ///<param name="offset">start of results displayed (0 based)</param>
+        ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessels</returns>   
         /// <response code="400">Invalid input parameters</response>
         /// <response code="408">Timeout expired</response>
@@ -264,7 +265,7 @@ namespace MicroService
         /// Inserts or updates vessels
         ///</summary>
         ///<remarks>
-        /// Stub. Out of function.
+        /// Stub (out of function)
         ///</remarks>
         ///<param name="data">an array of vessels data</param>
         /// <response code="204">Success with a response having an enpty content</response>
@@ -305,7 +306,7 @@ namespace MicroService
         /// Inserts or updates vessel
         ///</summary>
         ///<remarks>
-        /// Stub. Out of function.
+        /// Stub (out of function)
         ///</remarks>
         ///<param name="data">the vessel data</param>
         /// <response code="201">A newly created vessel object</response>
@@ -354,7 +355,7 @@ namespace MicroService
         /// Deletes vessels
         ///</summary>
         ///<remarks>
-        /// Stub. Out of function.
+        /// Stub  (out of function)
         /// Test it &lt;ArrayOfGuid&gt;&lt;guid&gt;a21c6578-6281-48ad-8328-367456661e1a&lt;/guid&gt;&lt;/ArrayOfGuid&gt;
         ///</remarks>
         ///<param name="uuids">an array of vessel identificators</param>
