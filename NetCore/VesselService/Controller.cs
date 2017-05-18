@@ -59,8 +59,9 @@ namespace MicroService
         ///<param name="func"></param>
         ///<param name="limit"></param>
         ///<param name="offset"></param>
+        ///<param name="extended"></param>
         ///<returns></returns> 
-        async Task<IActionResult> ProcessQueryAsync<T>(Func<Database, IQueryable<T> > func, int limit, int offset)
+        async Task<IActionResult> ProcessQueryAsync<T>(Func<Database, IQueryable<T> > func, int limit, int offset, bool extended=false)
         {
             if (!ModelState.IsValid)
             {
@@ -84,7 +85,7 @@ namespace MicroService
             if (!String.IsNullOrEmpty(eto))
                 timeout = int.Parse(eto);           
 
-            Func<T[]> func1 = ()=>{
+            Func<T[]> getArray = ()=>{
                     using ( var db = new Database(Environment.GetEnvironmentVariable("CONNECTION_STRING")))
                     {
                         db.Database.SetCommandTimeout(timeout); 
@@ -114,16 +115,18 @@ namespace MicroService
 
             try
             {
-                var task = Task.Run(func1);
+                var task = Task.Run(getArray);
                 var completedTask = await Task.WhenAny(task, Task.Delay(timeout * 1000 + 50));
                 if (completedTask==task)
                 {
                     var rv = await task;
+                    await rv.ResolveDetailsAsync(extended);
                     return Ok(rv);
                 }
                 else
                 {
-                    var rv = await Task.Run(func1);
+                    var rv = await Task.Run(getArray);
+                    await rv.ResolveDetailsAsync(extended);
                     return Ok(rv);
                 }              
             }
@@ -162,25 +165,26 @@ namespace MicroService
         /// Test it uuid=a21c6578-6281-48ad-8328-367456661e1a
         ///</remarks>
         ///<param name="uuid">vessel identificator</param>
+        ///<param name="extended">show more details</param>
         ///<returns>The vessel instance</returns> 
         /// <response code="400">Invalid input parameters</response>
         /// <response code="408">Timeout expired</response>
         /// <response code="500">Request process failed on server</response>
-        [HttpGet("{uuid}")]
+        [HttpGet("{uuid}/{extended:bool?}")]
         [ProducesResponseType(typeof(Vessel[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
         [ProducesResponseType(typeof(ErrorInfo[]), 500)]
-        public async Task<IActionResult> Get([FromRoute]Guid uuid)
+        public async Task<IActionResult> Get([FromRoute]Guid uuid, [FromRoute]bool extended=false)
         { 
-            GetCountries
             return await ProcessQueryAsync((context)=>{
                 return context.Vessel.Where(v=>v.vessel_id==uuid);
-            }, 1, 0);
+            }, 1, 0, extended);
         }
 
         ///<summary>
         /// Selects all vessels
         ///</summary>
+        ///<param name="extended">show more details</param>
         ///<param name="limit">number of results displayed</param>
         ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessels</returns>  
@@ -190,18 +194,19 @@ namespace MicroService
         [ProducesResponseType(typeof(Vessel[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
         [ProducesResponseType(typeof(ErrorInfo[]), 500)]
-        [HttpGet("{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Get([FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        [HttpGet("{extended:bool?}/{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> Get([FromRoute]bool extended=false, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
         {  
             return await ProcessQueryAsync((context)=>{
                 return context.Vessel.OrderBy(v=>v.vessel_id);
-            }, limit, offset);
+            }, limit, offset, extended);
         }
 
         ///<summary>
         /// Searches vessels by name
         ///</summary>
         ///<param name="name">name pattern</param>
+        ///<param name="extended">show more details</param>
         ///<param name="limit">number of results displayed</param>
         ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessels</returns>   
@@ -211,12 +216,12 @@ namespace MicroService
         [ProducesResponseType(typeof(Vessel[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
         [ProducesResponseType(typeof(ErrorInfo[]), 500)]
-        [HttpGet("Search/{name}/{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Search(string name, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        [HttpGet("Search/{name}/{extended:bool?}/{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> Search(string name, [FromRoute]bool extended=false, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
         {  
             return await ProcessQueryAsync((context)=>{
                 return context.Vessel.Where(v=>v.vessel_name.Contains(name.ToUpper())).OrderBy(v=>v.vessel_id);
-            }, limit, offset);
+            }, limit, offset, extended);
         }
 
         ///<summary>
@@ -226,6 +231,7 @@ namespace MicroService
         /// Test it query={callsign:"UBBE4", mmsi:273352160}
         ///</remarks>
         ///<param name="query">query parameters</param>
+        ///<param name="extended">show more details</param>
         ///<param name="limit">number of results displayed</param>
         ///<param name="offset">number of results skiped from start</param>
         ///<returns>An array of vessels</returns>   
@@ -235,8 +241,8 @@ namespace MicroService
         [ProducesResponseType(typeof(Vessel[]), 200)]
         [ProducesResponseType(typeof(ErrorInfo[]), 400)]
         [ProducesResponseType(typeof(ErrorInfo[]), 500)]
-        [HttpPost("Search/{limit:int?}/{offset:int?}")]
-        public async Task<IActionResult> Search([FromBody]VesselQuery query, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
+        [HttpPost("Search/{extended:bool?}/{limit:int?}/{offset:int?}")]
+        public async Task<IActionResult> Search([FromBody]VesselQuery query, [FromRoute]bool extended=false, [FromRoute]int limit=-1, [FromRoute]int offset=0) 
         { 
             return await ProcessQueryAsync((context)=>{            
                 var q = context.Vessel.AsQueryable();
@@ -258,7 +264,7 @@ namespace MicroService
                         q = q.Where(v=>v.vessel_type_code!=null && v.vessel_type_code==query.vessel_type_code);
                 } 
                 return q.OrderBy(v=>v.vessel_id);
-            }, limit, offset);
+            }, limit, offset, extended);
         }
 
         ///<summary>

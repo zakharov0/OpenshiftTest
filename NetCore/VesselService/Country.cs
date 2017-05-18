@@ -49,7 +49,7 @@ namespace MicroService
         ///</summary>
         public override string ToString()
         {
-            return String.Format("country_id={0}, flag_code={2}, name={3}", country_id, flag_code, name);
+            return String.Format("country_id={0}, flag_code={1}, name={2}", country_id, flag_code, name);
         }        
     }
 }
