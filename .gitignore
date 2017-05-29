@@ -8,3 +8,6 @@
 /NetCore/PositionService/env.bat
 /NetCore/TypeService/env.bat
 /NetCore/VesselService/env.bat
+/Leechit/bin
+/Leechit/obj
+/Leechit/project.lock.json
