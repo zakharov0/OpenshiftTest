@@ -163,7 +163,7 @@ namespace Leechit
                 GetOptions(s, "stran_id1");//statgr_id
                 return;
             }  
-
+/*
             List<VesselCard> cards = new List<VesselCard>();
             foreach(string fn in Directory.GetFiles("11"))
             {
@@ -193,7 +193,7 @@ namespace Leechit
             using(var w = File.CreateText("11.xml"))
             xser.Serialize(w, cards.ToArray());
             return;
-
+*/
 //var info = LeechAsync("https://lk.rs-class.org/regbook/print",
 //new StringContent(""), new Uri("https://lk.rs-class.org/regbook/vessel?fleet_id=922050"), "en").Result;
 //return;
@@ -211,24 +211,24 @@ namespace Leechit
             var cpus = Environment.ProcessorCount;
             Console.WriteLine("CPU "+cpus);
             Task[] tasks = new Task[cpus];
-            for (int i=0; i<tasks.Length-1; ++i)
-                tasks[i] = Task.Run(()=>{
-                    Console.WriteLine(System.Threading.Thread.CurrentThread.ManagedThreadId+" STARTED");
-                    while(true){
-                        string request = "";
-                        if(_requests.TryDequeue(out request))
-                        {
-                            GetInfoAsync(countries[0], request, "en").Wait();
-                            GetInfoAsync(countries[0], request, "ru").Wait();
-                            Console.WriteLine(request + "DONE");
-                        }
-                        else if(tokenSource.Token.IsCancellationRequested)
-                            break;
-                        else
-                            Task.Delay(100);
-                    }
-                    Console.WriteLine(System.Threading.Thread.CurrentThread.ManagedThreadId+" ENDED");
-                }, tokenSource.Token);
+            // for (int i=0; i<tasks.Length-1; ++i)
+            //     tasks[i] = Task.Run(()=>{
+            //         Console.WriteLine(System.Threading.Thread.CurrentThread.ManagedThreadId+" STARTED");
+            //         while(true){
+            //             string request = "";
+            //             if(_requests.TryDequeue(out request))
+            //             {
+            //                 GetInfoAsync(countries[0], request, "en").Wait();
+            //                 GetInfoAsync(countries[0], request, "ru").Wait();
+            //                 Console.WriteLine(request + "DONE");
+            //             }
+            //             else if(tokenSource.Token.IsCancellationRequested)
+            //                 break;
+            //             else
+            //                 Task.Delay(100);
+            //         }
+            //         Console.WriteLine(System.Threading.Thread.CurrentThread.ManagedThreadId+" ENDED");
+            //     }, tokenSource.Token);
             tasks[cpus-1] = Task.Run(()=>{
                 Console.WriteLine(System.Threading.Thread.CurrentThread.ManagedThreadId+" STARTED");
                 int page = 0, vessels = 0;
