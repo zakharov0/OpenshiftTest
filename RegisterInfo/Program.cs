@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Net;
 
-namespace Leechit
+namespace RegisterInfo
 {
     public class Property{
         public int n;
@@ -60,29 +60,6 @@ namespace Leechit
                 var s = Encoding.UTF8.GetString(ba);
                 return s;
              }
-        }
-
-        public static List<string> GetOptions(string s, string target)
-        {            
-            var start = -1;
-            var end = s.IndexOf(target);//
-            using(var text = File.CreateText("Options.txt"))
-            while(end!=-1){
-                start = s.IndexOf("value=", end);
-                if (start<0)
-                    break;
-                end = s.IndexOf(">", start);
-
-                string line = s.Substring(start, end-start).Replace("selected", "").Replace("value=", "").Trim('"', ' ', '\'')+" ";
-                start = end+1;
-                end = s.IndexOf("<option", start);
-                line += "'"+s.Substring(start, s.IndexOf("<", start)-start).Trim()+"'";
-                Console.WriteLine(line);
-                text.WriteLine(line);
-                if (start<0 || s.Substring(start, end-start).Contains("select"))
-                    break;
-            }
-            return null;
         }
 
         static int Parse(string s, string target, int start, out string rv)
@@ -156,44 +133,7 @@ namespace Leechit
            
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             var s = "";
-            if (args.Contains("getoptions"))
-            {
-                s = LeechAsync("https://lk.rs-class.org/regbook/regbookVessel?ln=ru",
-                new StringContent("")).Result;
-                GetOptions(s, "stran_id1");//statgr_id
-                return;
-            }  
-/*
-            List<VesselCard> cards = new List<VesselCard>();
-            foreach(string fn in Directory.GetFiles("11"))
-            {
-                if (fn.Contains(".ru"))
-                continue;
-                using(var ruf=File.OpenText(fn.Replace(".en", ".ru")))
-                using(var enf=File.OpenText(fn)){
-                    var rujson = ruf.ReadToEnd();
-                    var enjson = enf.ReadToEnd();
-                    var cardru = JsonConvert.DeserializeObject<VesselCard>(rujson);
-                    var carden = JsonConvert.DeserializeObject<VesselCard>(enjson);
-                    foreach(var gr in carden.groups){
-                        var gru = cardru.groups.Single(g=>g.n==gr.n);
-                        gr.title_ru = gru.title;
-                        foreach(var pr in gr.properties)
-                        {
-                            Console.WriteLine(pr.n);
-                            var pru = gru.properties.Single(p=>p.n==(gr.n==1&&pr.n>1?pr.n+1:pr.n));
-                            pr.title_ru = pru.title;
-                            pr.value_ru = pru.value;
-                        }
-                    }
-                    cards.Add(carden);
-                }
-            }
-            var xser = new System.Xml.Serialization.XmlSerializer(typeof(VesselCard[]));
-            using(var w = File.CreateText("11.xml"))
-            xser.Serialize(w, cards.ToArray());
-            return;
-*/
+           
 //var info = LeechAsync("https://lk.rs-class.org/regbook/print",
 //new StringContent(""), new Uri("https://lk.rs-class.org/regbook/vessel?fleet_id=922050"), "en").Result;
 //return;
@@ -250,8 +190,9 @@ namespace Leechit
                 Console.WriteLine(System.Threading.Thread.CurrentThread.ManagedThreadId+" ENDED");
                 tokenSource.Cancel();
             });
-            Task.WaitAll(tasks);
-
+            //Task.WaitAll(tasks);
+            tasks[cpus-1].Wait();
+            
             Console.WriteLine("DONE "+_requests.Count);
         }
     }
