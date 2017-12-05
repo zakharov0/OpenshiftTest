@@ -1,0 +1,126 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "OIDC Python API",
+    "version": "1.0.0",
+    "title": "OIDC Python API",
+    "termsOfService": "http://swagger.io/terms/",
+    "contact": {
+      "email": "apiteam@swagger.io"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  },
+  "host": "rum-zakharov.scanex.ru:5001",
+  "basePath": "/api/1.0",
+  "tags": [
+    {
+      "name": "themes",
+      "description": "Everything about your Themes"
+    },
+    {
+      "name": "theme",
+      "description": "Everything about your Theme",
+      "externalDocs": {
+        "description": "Find out more about our store",
+        "url": "http://swagger.io"
+      }
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/themes": {
+      "get": {
+        "tags": [
+          "themes"
+        ],
+        "summary": "Get all themes",
+        "description": "Returns all available themes",
+        "operationId": "getAllThemes",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          "404": {
+            "description": "Themes not available"
+          }
+        },
+        "security": [
+          {
+            "themes_auth": []
+          }
+        ]
+      }
+    },
+    "/theme/{themeId}": {
+      "get": {
+        "tags": [
+          "theme"
+        ],
+        "summary": "Find theme by ID",
+        "description": "Returns a single theme",
+        "operationId": "getThemeById",
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "themeId",
+            "in": "path",
+            "description": "ID of theme to return",
+            "required": true,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied"
+          },
+          "404": {
+            "description": "Theme not found"
+          }
+        },
+        "security": [
+          {
+            "themes_auth": []
+          }
+        ]
+      }
+    }
+  },
+  "securityDefinitions": {
+    "themes_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "http://rum-zakharov.scanex.ru:5001",
+      "flow": "implicit",
+      "scopes": {
+        "write:themes": "modify themes in your account",
+        "read:themes": "read your themes"
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "Find out more about Swagger",
+    "url": "http://swagger.io"
+  }
+}

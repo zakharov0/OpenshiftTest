@@ -33,7 +33,9 @@ mgr.events.addUserLoaded(function (user) {
     log("User logged in", user)
 });
 mgr.signinSilent()
-.then((r)=>{console.log(r)})
+.then((r)=>{
+    console.log(">>>" + r)
+})
 .catch((err)=>{
     if (err.error=='login_required')
         log("User not logged in");
